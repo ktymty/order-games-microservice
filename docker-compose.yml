@@ -1,0 +1,98 @@
+version: '3.8'
+services:
+  mongodb:
+    image: mongo:latest
+    restart: always
+    container_name: mongodb-order-games
+    ports:
+      - 27017:27017
+    networks:
+      - my-games-network
+    volumes:
+      - games-mongodb:/var/lib/mongo/data
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+      MONGO_INITDB_DATABASE: catalog-service
+
+  mongo-express:
+    image: mongo-express
+    restart: always
+    container_name: mongo-express-order-games
+    ports:
+      - 8081:8081
+    networks:
+      - my-games-network
+    depends_on:
+      - mongodb
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: root
+      ME_CONFIG_MONGODB_URL: mongodb://root:root@mongo:27017/
+
+  postgresdb:
+    image: postgres:13.5
+    restart: always
+    container_name: postgres-order-games
+    ports:
+      - 5432:5432
+    networks:
+      - my-games-network
+    volumes:
+      - games-postgresdb:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      PGDATA: /var/lib/postgresql/data
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: always
+    container_name: pgadmin4-order-games
+    networks:
+      - my-games-network
+    ports:
+      - 5050:5050
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_LISTEN_PORT: 5050
+    volumes:
+      - games-pgadmin:/var/lib/pgadmin/data
+
+  rabbitmq3:
+    image: rabbitmq:3.9.11-management
+    restart: always
+    container_name: rabbitmq-order-games
+    networks:
+      - my-games-network
+    ports:
+      - 5672:5672
+      - 15672:15672
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  zipkin:
+    image: openzipkin/zipkin
+    restart: always
+    container_name: zipkin-order-games
+    mem_limit: 512m
+    networks:
+      - my-games-network
+    ports:
+      - "9411:9411"
+    environment:
+      STORAGE_TYPE: mem
+
+networks:
+  my-games-network:
+
+volumes:
+  games-mongodb:
+  games-postgresdb:
+  games-pgadmin:
